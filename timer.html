@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Таймер упражнений</title>
+<style>
+:root {
+  --bg:    #000; --s1: #1c1c1e; --s2: #2c2c2e; --s3: #3a3a3c;
+  --text:  #fff; --t2: rgba(235,235,245,.6); --t3: rgba(235,235,245,.3);
+  --blue:  #0066cc; --red: #ff3b30; --green: #34c759; --orange: #ff9f0a;
+  --sep:   rgba(84,84,88,.45);
+  --font:  -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text);
+       min-height: 100vh; font-size: 17px; line-height: 1.47;
+       transition: background .3s, color .3s; }
+
+/* ─ Views ─ */
+.view { display: none; max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; }
+.view.active { display: block; }
+
+/* ─ Buttons ─ */
+.btn { display: inline-flex; align-items: center; justify-content: center;
+       border: none; cursor: pointer; font-family: var(--font); font-weight: 600;
+       font-size: 17px; transition: opacity .15s, transform .1s; }
+.btn:active  { transform: scale(.95); }
+.btn:disabled { opacity: .35; pointer-events: none; }
+.btn-pill { border-radius: 9999px; padding: 12px 28px; }
+.btn-rect { border-radius: 12px; padding: 10px 18px; }
+.btn-sm   { border-radius: 9999px; padding: 6px 14px; font-size: 14px; font-weight: 500; }
+.btn-blue  { background: var(--blue); color: #fff; }
+.btn-ghost { background: var(--s2);   color: var(--text); }
+.btn-ghost:hover { background: var(--s3); }
+.btn-red-soft { background: rgba(255,59,48,.12); color: var(--red); }
+
+/* ─ Cards ─ */
+.card { background: var(--s1); border-radius: 16px; padding: 0 16px; margin-bottom: 12px;
+        transition: background .3s; }
+.row  { display: flex; align-items: center; gap: 10px; padding: 13px 0;
+        border-bottom: 1px solid var(--sep); }
+.row:last-child { border-bottom: none; }
+.label { font-size: 15px; color: var(--t2); }
+
+/* ─ Theme btn ─ */
+#btn-theme { position: fixed; top: 16px; right: 18px; z-index: 999;
+             width: 38px; height: 38px; border-radius: 50%; font-size: 18px;
+             background: var(--s2); border: none; cursor: pointer;
+             box-shadow: 0 2px 8px rgba(0,0,0,.4); transition: background .3s; }
+
+/* ─ Programs ─ */
+.prog-card { background: var(--s1); border-radius: 16px; padding: 16px;
+             margin-bottom: 12px; transition: background .3s; }
+.prog-name { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+.prog-meta { font-size: 13px; color: var(--t2); margin-top: 2px; }
+
+/* ─ Editor ─ */
+.section-label { font-size: 12px; font-weight: 600; color: var(--t2);
+                 text-transform: uppercase; letter-spacing: .5px;
+                 margin: 20px 0 8px 4px; }
+.round-card { background: var(--s1); border-radius: 14px; margin-bottom: 10px;
+              overflow: hidden; transition: background .3s; }
+.round-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+              border-bottom: 1px solid var(--sep); }
+.round-head input { flex: 1; background: var(--s2); border: none; border-radius: 8px;
+                    color: var(--text); padding: 7px 10px; font-family: var(--font);
+                    font-size: 15px; outline: none; transition: background .3s; }
+.ex-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+          border-bottom: 1px solid var(--sep); flex-wrap: wrap; }
+.ex-row:last-child { border-bottom: none; }
+.ex-num { font-size: 13px; color: var(--t3); min-width: 18px; }
+.ex-row input[type="text"]   { flex: 1; min-width: 90px; }
+.ex-row input[type="number"] { width: 58px; text-align: center; }
+.ex-row input { background: var(--s2); border: none; border-radius: 8px;
+                color: var(--text); padding: 6px 8px; font-family: var(--font);
+                font-size: 14px; outline: none; transition: background .3s; }
+.ex-lbl { font-size: 12px; color: var(--t3); }
+.add-ex-btn { width: 100%; padding: 12px; text-align: center; background: none;
+              border: none; color: var(--blue); font-family: var(--font);
+              font-size: 15px; font-weight: 600; cursor: pointer; }
+.add-ex-btn:hover { opacity: .7; }
+
+/* ─ Timer ─ */
+.t-prog-name { font-size: 17px; font-weight: 600; flex: 1; }
+.t-info { background: var(--s1); border-radius: 14px; padding: 14px 18px;
+          margin-bottom: 18px; min-height: 64px; display: flex;
+          flex-direction: column; justify-content: center; gap: 2px;
+          transition: background .3s; }
+.t-round { font-size: 13px; color: var(--t2); }
+.t-exname { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+
+.ring-wrap { display: flex; justify-content: center; margin-bottom: 22px; position: relative; }
+.ring-svg { transform: rotate(-90deg); }
+.ring-bg   { fill: none; stroke: var(--s2); stroke-width: 7; }
+.ring-fg   { fill: none; stroke-width: 7; stroke-linecap: round;
+             transition: stroke-dashoffset .85s linear, stroke .3s; }
+.ring-center { position: absolute; top: 50%; left: 50%;
+               transform: translate(-50%,-50%);
+               display: flex; flex-direction: column;
+               align-items: center; text-align: center; gap: 2px; }
+.ring-phase { font-size: 13px; font-weight: 500; color: var(--t2); }
+.ring-time  { font-size: 52px; font-weight: 700; letter-spacing: -3px;
+              font-variant-numeric: tabular-nums; line-height: 1; }
+.ring-count { font-size: 12px; color: var(--t3); }
+
+.t-start-btn { width: 100%; font-size: 19px; padding: 16px; border-radius: 9999px;
+               margin-bottom: 12px; }
+.t-run-btns  { display: flex; gap: 10px; margin-bottom: 12px; }
+.t-status    { text-align: center; font-size: 15px; color: var(--t2);
+               min-height: 22px; margin-bottom: 10px; }
+
+.seq-list { background: var(--s1); border-radius: 14px; overflow: hidden;
+            max-height: 240px; overflow-y: auto; transition: background .3s; }
+.seq-row  { display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+            border-bottom: 1px solid var(--sep); font-size: 14px; color: var(--t2);
+            transition: background .15s; }
+.seq-row:last-child { border-bottom: none; }
+.seq-row.cur  { background: rgba(0,102,204,.13); color: var(--text); }
+.seq-row.done { color: var(--t3); }
+.seq-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--s3); flex-shrink: 0; }
+.seq-row.cur  .seq-dot { background: var(--blue); }
+.seq-row.done .seq-dot { background: var(--s2); }
+.seq-rnd  { font-size: 11px; color: var(--t3); min-width: 54px; }
+.seq-row.cur .seq-rnd { color: rgba(0,102,204,.7); }
+.seq-time { margin-left: auto; font-size: 11px; color: var(--t3); }
+</style>
+</head>
+<body>
+
+<button id="btn-theme">🌙</button>
+
+<!-- ══ Programs ══ -->
+<div id="vPrograms" class="view active">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div style="font-size:28px;font-weight:700;letter-spacing:-.5px">Тренировки</div>
+    <button class="btn btn-pill btn-blue" id="btnNewProg" style="font-size:15px;padding:10px 22px">+ Программа</button>
+  </div>
+  <div id="progList"></div>
+</div>
+
+<!-- ══ Editor ══ -->
+<div id="vEditor" class="view">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <button class="btn btn-sm btn-ghost" id="btnEdBack">← Назад</button>
+    <div style="font-size:22px;font-weight:700" id="edTitle">Новая программа</div>
+  </div>
+
+  <div class="section-label">Настройки</div>
+  <div class="card">
+    <div class="row">
+      <span class="label" style="flex:1">Название</span>
+      <input type="text" id="inpName" placeholder="Например, Йога"
+             style="background:var(--s2);border:none;border-radius:10px;color:var(--text);
+                    padding:8px 12px;font-family:var(--font);font-size:16px;
+                    outline:none;width:200px;transition:background .3s">
+    </div>
+    <div class="row">
+      <span class="label" style="flex:1">Задержка старта</span>
+      <input type="number" id="inpDelay" value="5" min="0" max="60"
+             style="background:var(--s2);border:none;border-radius:10px;color:var(--text);
+                    padding:8px 12px;font-family:var(--font);font-size:16px;
+                    outline:none;width:64px;text-align:center;transition:background .3s">
+      <span class="label">сек</span>
+    </div>
+  </div>
+
+  <div class="section-label">Круги и упражнения</div>
+  <div id="roundsContainer"></div>
+  <button class="btn btn-rect btn-ghost" id="btnAddRound"
+          style="width:100%;margin-bottom:16px;font-size:15px">+ Добавить круг</button>
+
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-pill btn-blue" id="btnSave" style="flex:1;font-size:16px;padding:14px">Сохранить</button>
+    <button class="btn btn-pill btn-ghost" id="btnCancel">Отмена</button>
+  </div>
+</div>
+
+<!-- ══ Timer ══ -->
+<div id="vTimer" class="view">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+    <button class="btn btn-sm btn-ghost" id="btnTimerBack">← Назад</button>
+    <div class="t-prog-name" id="tProgName"></div>
+  </div>
+
+  <div class="t-info">
+    <div class="t-round" id="tRound"></div>
+    <div class="t-exname" id="tExName">Готов к старту</div>
+  </div>
+
+  <div class="ring-wrap">
+    <svg class="ring-svg" width="240" height="240" viewBox="0 0 240 240">
+      <circle class="ring-bg" cx="120" cy="120" r="104"/>
+      <circle class="ring-fg" cx="120" cy="120" r="104" id="ringFg"
+              stroke="#0066cc" stroke-dasharray="654" stroke-dashoffset="654"/>
+    </svg>
+    <div class="ring-center">
+      <div class="ring-phase" id="ringPhase">—</div>
+      <div class="ring-time"  id="ringTime">--</div>
+      <div class="ring-count" id="ringCount"></div>
+    </div>
+  </div>
+
+  <div id="tPreStart">
+    <button class="btn btn-blue t-start-btn" id="btnStart">Начать тренировку</button>
+  </div>
+  <div id="tRunning" style="display:none">
+    <div class="t-run-btns">
+      <button class="btn btn-pill btn-ghost" id="btnPause" style="flex:1">⏸ Пауза</button>
+      <button class="btn btn-pill btn-red-soft" id="btnStop">Стоп</button>
+    </div>
+  </div>
+
+  <div class="t-status" id="tStatus"></div>
+  <div class="seq-list" id="seqList"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══ Helpers ═══════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  return m ? m+':'+String(sec).padStart(2,'0') : String(sec);
+}
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function $(id) { return document.getElementById(id); }
+
+/* ═══ Theme ══════════════════════════════════════════════════════ */
+let isLight = false;
+const DARK  = {'--bg':'#000','--s1':'#1c1c1e','--s2':'#2c2c2e','--s3':'#3a3a3c',
+               '--text':'#fff','--t2':'rgba(235,235,245,.6)','--t3':'rgba(235,235,245,.3)',
+               '--sep':'rgba(84,84,88,.45)'};
+const LIGHT = {'--bg':'#f5f5f7','--s1':'#fff','--s2':'#f2f2f7','--s3':'#e5e5ea',
+               '--text':'#1d1d1f','--t2':'rgba(60,60,67,.6)','--t3':'rgba(60,60,67,.3)',
+               '--sep':'rgba(60,60,67,.18)'};
+
+function setTheme(light) {
+  isLight = light;
+  const v = light ? LIGHT : DARK;
+  const keys = Object.keys(v);
+  for (var i = 0; i < keys.length; i++) {
+    document.documentElement.style.setProperty(keys[i], v[keys[i]]);
+  }
+  $('btn-theme').textContent = light ? '☀️' : '🌙';
+  try { localStorage.setItem('tmr_theme', light ? '1' : '0'); } catch(e) {}
+}
+$('btn-theme').onclick = () => setTheme(!isLight);
+
+/* ═══ Storage ════════════════════════════════════════════════════ */
+const STORE = 'tmr_progs_v1';
+let programs = [];
+
+function loadProgs() {
+  try { programs = JSON.parse(localStorage.getItem(STORE)) || []; }
+  catch(e) { programs = []; }
+}
+function saveProgs() {
+  try { localStorage.setItem(STORE, JSON.stringify(programs)); } catch(e) {}
+}
+
+/* ═══ Views ══════════════════════════════════════════════════════ */
+function showView(id) {
+  ['vPrograms','vEditor','vTimer'].forEach(v => {
+    $(v).classList.toggle('active', v === id);
+  });
+}
+
+/* ═══ Programs view ══════════════════════════════════════════════ */
+function renderPrograms() {
+  const el = $('progList');
+  if (!programs.length) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t2);font-size:15px">Нет программ — нажмите «+ Программа»</div>';
+    return;
+  }
+  el.innerHTML = '';
+  programs.forEach(function(p) {
+    const total = p.rounds.reduce(function(s,r){ return s + r.exercises.length; }, 0);
+    const card = document.createElement('div');
+    card.className = 'prog-card';
+    card.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px">' +
+        '<div style="flex:1">' +
+          '<div class="prog-name">'+esc(p.name)+'</div>' +
+          '<div class="prog-meta">'+p.rounds.length+' кр. · '+total+' упр.</div>' +
+        '</div>' +
+        '<button class="btn btn-sm btn-ghost" data-pid="'+p.id+'" data-act="edit">✎</button>' +
+        '<button class="btn btn-sm btn-red-soft" data-pid="'+p.id+'" data-act="del">✕</button>' +
+      '</div>' +
+      '<button class="btn btn-pill btn-blue" data-pid="'+p.id+'" data-act="run" '+
+              'style="width:100%;font-size:16px;padding:13px">Начать занятие</button>';
+    el.appendChild(card);
+  });
+}
+
+$('progList').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const pid = btn.dataset.pid, act = btn.dataset.act;
+  if (act === 'run')  { openTimer(pid); }
+  if (act === 'edit') { openEditor(pid); }
+  if (act === 'del')  {
+    var found = programs.find(function(p){ return p.id===pid; });
+    if (confirm('Удалить программу «'+(found ? found.name : '')+'»?')) {
+      programs = programs.filter(function(p){ return p.id !== pid; });
+      saveProgs(); renderPrograms();
+    }
+  }
+});
+$('btnNewProg').onclick = function() { openEditor(null); };
+
+/* ═══ Editor ═════════════════════════════════════════════════════ */
+let editId = null;
+
+function mkEx()    { return {id:uid(), name:'', duration:30, rest:15}; }
+function mkRound(n){ return {id:uid(), name:'Круг '+n, exercises:[mkEx()]}; }
+
+function openEditor(pid) {
+  editId = pid;
+  let p = null;
+  if (pid) { p = JSON.parse(JSON.stringify(programs.find(function(x){ return x.id===pid; }))); }
+  if (!p)  { p = {id:uid(), name:'', startDelay:5, rounds:[mkRound(1)]}; }
+
+  $('edTitle').textContent  = pid ? 'Редактирование' : 'Новая программа';
+  $('inpName').value        = p.name;
+  $('inpDelay').value       = p.startDelay != null ? p.startDelay : 5;
+  $('roundsContainer').innerHTML = '';
+  p.rounds.forEach(function(r){ $('roundsContainer').appendChild(buildRoundEl(r)); });
+  showView('vEditor');
+}
+
+function buildRoundEl(round) {
+  const wrap = document.createElement('div');
+  wrap.className = 'round-card';
+  wrap.dataset.rid = round.id;
+
+  // header
+  const head = document.createElement('div');
+  head.className = 'round-head';
+  const rInput = document.createElement('input');
+  rInput.type = 'text'; rInput.value = round.name; rInput.placeholder = 'Название круга';
+  rInput.className = 'r-name';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn btn-sm btn-red-soft';
+  delBtn.textContent = '✕ Круг';
+  delBtn.onclick = function() {
+    if ($('roundsContainer').querySelectorAll('.round-card').length <= 1) {
+      alert('Минимум один круг!'); return;
+    }
+    wrap.remove(); reindex();
+  };
+  head.appendChild(rInput); head.appendChild(delBtn);
+  wrap.appendChild(head);
+
+  // exercises
+  const exList = document.createElement('div');
+  exList.className = 'ex-list';
+  round.exercises.forEach(function(ex, i){ exList.appendChild(buildExEl(ex, i)); });
+  wrap.appendChild(exList);
+
+  // add exercise button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-ex-btn';
+  addBtn.textContent = '+ Добавить упражнение';
+  addBtn.onclick = function() {
+    const newEx = mkEx();
+    exList.appendChild(buildExEl(newEx, exList.querySelectorAll('.ex-row').length));
+  };
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
+function buildExEl(ex, idx) {
+  const row = document.createElement('div');
+  row.className = 'ex-row'; row.dataset.eid = ex.id;
+
+  const num = document.createElement('span');
+  num.className = 'ex-num'; num.textContent = (idx+1)+'.';
+
+  const nameIn = document.createElement('input');
+  nameIn.type = 'text'; nameIn.value = ex.name; nameIn.placeholder = 'Упражнение';
+  nameIn.className = 'ex-name';
+
+  const lbl1 = document.createElement('span'); lbl1.className='ex-lbl'; lbl1.textContent='сек';
+  const durIn = document.createElement('input');
+  durIn.type='number'; durIn.value=ex.duration; durIn.min='1'; durIn.className='ex-dur';
+
+  const lbl2 = document.createElement('span'); lbl2.className='ex-lbl'; lbl2.textContent='отд';
+  const restIn = document.createElement('input');
+  restIn.type='number'; restIn.value=ex.rest; restIn.min='0'; restIn.className='ex-rest';
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn btn-sm btn-red-soft'; delBtn.textContent = '✕';
+  delBtn.onclick = function() {
+    const list = row.closest('.ex-list');
+    if (list.querySelectorAll('.ex-row').length <= 1) { alert('Минимум одно упражнение!'); return; }
+    row.remove(); reindex();
+  };
+
+  row.append(num, nameIn, lbl1, durIn, lbl2, restIn, delBtn);
+  return row;
+}
+
+function reindex() {
+  $('roundsContainer').querySelectorAll('.ex-list').forEach(function(list) {
+    list.querySelectorAll('.ex-row').forEach(function(r, i) {
+      r.querySelector('.ex-num').textContent = (i+1)+'.';
+    });
+  });
+}
+
+function readEditorState() {
+  const name = $('inpName').value.trim();
+  const delay = parseInt($('inpDelay').value) || 5;
+  const rounds = [];
+  $('roundsContainer').querySelectorAll('.round-card').forEach(function(rb) {
+    const exercises = [];
+    rb.querySelectorAll('.ex-row').forEach(function(er) {
+      exercises.push({
+        id:       er.dataset.eid || uid(),
+        name:     er.querySelector('.ex-name').value.trim(),
+        duration: parseInt(er.querySelector('.ex-dur').value)  || 30,
+        rest:     parseInt(er.querySelector('.ex-rest').value) || 15
+      });
+    });
+    rounds.push({
+      id:   rb.dataset.rid || uid(),
+      name: rb.querySelector('.r-name').value.trim(),
+      exercises: exercises
+    });
+  });
+  return { name: name, startDelay: delay, rounds: rounds };
+}
+
+$('btnAddRound').onclick = function() {
+  const n = $('roundsContainer').querySelectorAll('.round-card').length + 1;
+  $('roundsContainer').appendChild(buildRoundEl(mkRound(n)));
+};
+
+$('btnSave').onclick = function() {
+  const st = readEditorState();
+  if (!st.name) { alert('Введите название программы!'); return; }
+  if (!st.rounds.length) { alert('Добавьте хотя бы один круг!'); return; }
+
+  const prog = { id: editId || uid(), name: st.name, startDelay: st.startDelay, rounds: st.rounds };
+
+  if (editId) {
+    const idx = programs.findIndex(function(p){ return p.id === editId; });
+    if (idx >= 0) programs[idx] = prog; else programs.push(prog);
+  } else {
+    programs.push(prog);
+  }
+
+  saveProgs();
+  renderPrograms();
+  showView('vPrograms');
+};
+
+$('btnEdBack').onclick  = function() { showView('vPrograms'); };
+$('btnCancel').onclick  = function() { showView('vPrograms'); };
+
+/* ═══ Timer ══════════════════════════════════════════════════════ */
+const CIRC = 2 * Math.PI * 104; // r=104
+
+let tInterval = null;
+let tPhase    = 'idle';
+let tRemain   = 0;
+let tDuration = 0;
+let tPos      = 0;
+let tSeq      = [];
+let tProg     = null;
+let tPaused   = false;
+
+const PHASE_LABEL = { idle:'—', ready:'Старт через', exercise:'Упражнение', rest:'Отдых', done:'Готово!' };
+const RING_COLOR  = { idle:'#3a3a3c', ready:'#ff9f0a', exercise:'#34c759', rest:'#0066cc', done:'#34c759' };
+
+function buildSeq(prog) {
+  const seq = [];
+  prog.rounds.forEach(function(r) {
+    r.exercises.forEach(function(ex) {
+      seq.push({ roundName: r.name, exName: ex.name, duration: ex.duration, rest: ex.rest });
+    });
+  });
+  return seq;
+}
+
+function openTimer(pid) {
+  const found = programs.find(function(p){ return p.id === pid; });
+  if (!found) { alert('Программа не найдена!'); return; }
+
+  tProg = JSON.parse(JSON.stringify(found));
+  tSeq  = buildSeq(tProg);
+  tPos  = 0; tPaused = false;
+
+  clearInterval(tInterval); tInterval = null;
+  tPhase = 'idle'; tRemain = 0; tDuration = 0;
+
+  $('tProgName').textContent   = tProg.name;
+  $('tStatus').textContent     = '';
+  $('btnPause').textContent    = '⏸ Пауза';
+  $('tPreStart').style.display = 'block';
+  $('tRunning').style.display  = 'none';
+
+  renderSeq(); updateTimerUI();
+  showView('vTimer');
+}
+
+function renderSeq() {
+  const el = $('seqList'); el.innerHTML = '';
+  tSeq.forEach(function(item, i) {
+    const row = document.createElement('div');
+    row.className = 'seq-row' + (i < tPos ? ' done' : i === tPos ? ' cur' : '');
+    row.id = 'sr'+i;
+    row.innerHTML =
+      '<div class="seq-dot"></div>' +
+      '<span class="seq-rnd">'+esc(item.roundName)+'</span>' +
+      '<span>'+esc(item.exName||'—')+'</span>' +
+      '<span class="seq-time">'+item.duration+'с / '+item.rest+'с отд</span>';
+    el.appendChild(row);
+  });
+}
+
+function updateSeq() {
+  tSeq.forEach(function(_, i) {
+    const el = $('sr'+i); if (!el) return;
+    el.className = 'seq-row' + (i < tPos ? ' done' : i === tPos ? ' cur' : '');
+  });
+  const cur = $('sr'+tPos);
+  if (cur) cur.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function updateTimerUI() {
+  const item = tSeq[tPos];
+
+  $('ringPhase').textContent = PHASE_LABEL[tPhase] || '';
+  $('ringTime').textContent  = tPhase==='idle' ? '--' : tPhase==='done' ? '✓' : fmt(tRemain);
+  $('ringCount').textContent = (tPhase==='exercise'||tPhase==='rest') ? (tPos+1)+' / '+tSeq.length : '';
+
+  if (tPhase === 'exercise' && item) {
+    $('tRound').textContent  = item.roundName;
+    $('tExName').textContent = item.exName || '—';
+  } else if (tPhase === 'rest' && item) {
+    const next = tSeq[tPos+1];
+    $('tRound').textContent  = next ? next.roundName : item.roundName;
+    $('tExName').textContent = next ? 'Далее: '+next.exName : 'Последний отдых';
+  } else if (tPhase === 'ready') {
+    $('tRound').textContent  = '';
+    $('tExName').textContent = 'Приготовьтесь!';
+  } else if (tPhase === 'done') {
+    $('tRound').textContent  = '';
+    $('tExName').textContent = 'Тренировка завершена!';
+  } else {
+    $('tRound').textContent  = tSeq[0] ? tSeq[0].roundName : '';
+    $('tExName').textContent = 'Готов к старту';
+  }
+
+  const pct = tDuration > 0 ? (tDuration - tRemain) / tDuration : (tPhase==='done' ? 1 : 0);
+  $('ringFg').style.strokeDashoffset = CIRC * (1 - pct);
+  $('ringFg').style.stroke = RING_COLOR[tPhase] || '#0066cc';
+}
+
+function showRunning(running) {
+  $('tPreStart').style.display = running ? 'none'  : 'block';
+  $('tRunning').style.display  = running ? 'block' : 'none';
+}
+
+function startPhase(phase) {
+  clearInterval(tInterval); tInterval = null;
+  tPhase = phase; tPaused = false;
+
+  if (phase === 'ready') {
+    tRemain   = tProg.startDelay || 0;
+    tDuration = tRemain;
+    if (!tRemain) { startPhase('exercise'); return; }
+    showRunning(true); updateTimerUI();
+    tInterval = setInterval(tick, 1000);
+
+  } else if (phase === 'exercise') {
+    const item = tSeq[tPos];
+    tRemain   = item.duration;
+    tDuration = tRemain;
+    beep(1046, .25, .8); updateSeq(); showRunning(true); updateTimerUI();
+    tInterval = setInterval(tick, 1000);
+
+  } else if (phase === 'rest') {
+    const item = tSeq[tPos];
+    tRemain   = item.rest;
+    tDuration = tRemain;
+    beep(440, .25, .7);
+    if (!tRemain) { nextEx(); return; }
+    showRunning(true); updateTimerUI();
+    tInterval = setInterval(tick, 1000);
+
+  } else if (phase === 'done') {
+    tRemain = 0; tDuration = 0;
+    beep(440, .4, .7);
+    $('tStatus').textContent = 'Тренировка завершена! 🎉';
+    showRunning(false); updateTimerUI();
+  }
+}
+
+function nextEx() {
+  if (tPos < tSeq.length - 1) { tPos++; startPhase('exercise'); }
+  else { startPhase('done'); }
+}
+
+function tick() {
+  tRemain--;
+  if (tPhase === 'ready') {
+    if (tRemain <= 0) { clearInterval(tInterval); tInterval=null; tPos=0; startPhase('exercise'); }
+    else { if(tRemain<=1) beep(880,.18,.7); else beep(550,.10,.45); updateTimerUI(); }
+
+  } else if (tPhase === 'exercise') {
+    if (tRemain <= 0) {
+      clearInterval(tInterval); tInterval=null;
+      tPos < tSeq.length-1 ? startPhase('rest') : startPhase('done');
+    } else { updateTimerUI(); }
+
+  } else if (tPhase === 'rest') {
+    if (tRemain <= 0) { clearInterval(tInterval); tInterval=null; nextEx(); }
+    else {
+      if (tRemain <= 2) { beep(660,.12,.5); $('tStatus').textContent='Готовьтесь! '+tRemain; }
+      else { $('tStatus').textContent=''; }
+      updateTimerUI();
+    }
+  }
+}
+
+$('btnStart').onclick = function() {
+  // Unlock AudioContext on user gesture
+  try { if (!window._ac) window._ac = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){}
+  $('tStatus').textContent = '';
+  tPos = 0; tPaused = false;
+  renderSeq(); startPhase('ready');
+};
+
+$('btnPause').onclick = function() {
+  if (tPaused) {
+    tPaused = false;
+    $('btnPause').textContent = '⏸ Пауза';
+    tInterval = setInterval(tick, 1000);
+  } else {
+    tPaused = true;
+    clearInterval(tInterval); tInterval = null;
+    $('btnPause').textContent = '▶ Продолжить';
+  }
+};
+
+$('btnStop').onclick = function() {
+  clearInterval(tInterval); tInterval = null;
+  tPhase = 'idle'; tRemain = 0; tDuration = 0; tPos = 0; tPaused = false;
+  $('tStatus').textContent = '';
+  $('btnPause').textContent = '⏸ Пауза';
+  showRunning(false); renderSeq(); updateTimerUI();
+};
+
+$('btnTimerBack').onclick = function() {
+  clearInterval(tInterval); tInterval = null;
+  tPhase = 'idle'; tPaused = false;
+  showView('vPrograms');
+};
+
+/* ═══ Audio ══════════════════════════════════════════════════════ */
+function beep(freq, dur, vol) {
+  try {
+    if (!window._ac) window._ac = new (window.AudioContext||window.webkitAudioContext)();
+    const ac=window._ac, o=ac.createOscillator(), g=ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.frequency.value=freq;
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+dur);
+    o.start(); o.stop(ac.currentTime+dur+.05);
+  } catch(e){}
+}
+
+/* ═══ Init ═══════════════════════════════════════════════════════ */
+loadProgs();
+try { setTheme(localStorage.getItem('tmr_theme') === '1'); } catch(e) { setTheme(false); }
+renderPrograms();
+</script>
+</body>
+</html>
